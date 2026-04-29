@@ -10,6 +10,7 @@ import (
 	"github.com/haowenj/go-tiny-claw/internal/logutil"
 	"github.com/haowenj/go-tiny-claw/internal/provider"
 	"github.com/haowenj/go-tiny-claw/internal/schema"
+	"github.com/haowenj/go-tiny-claw/internal/tools"
 )
 
 // 伪造的工具注册表 (用于测试 Provider 的工具提取能力)
@@ -55,13 +56,17 @@ func main() {
 	llmProvider := provider.NewOpenAIProvider("qwen3-max")
 
 	// 2. 注入伪造的工具注册表
-	registry := &mockRegistry{}
+	registry := tools.NewRegistry()
 
-	// 3. 实例化并运行引擎，开启 EnableThinking = true (开启慢思考阶段！)
-	eng := engine.NewAgentEngine(llmProvider, registry, workDir, true)
+	// 3. 将真实的 ReadFile 工具挂载到注册表中
+	readFileTool := tools.NewReadFileTool(workDir)
+	registry.Register(readFileTool)
+
+	// 4. 实例化核心引擎，由于任务简单，我们关闭思考阶段 (EnableThinking = false) 以加快速度
+	eng := engine.NewAgentEngine(llmProvider, registry, workDir, false)
 
 	// 设定测试任务
-	prompt := "我想去北京跑步，帮我查查天气适合吗？"
+	prompt := "请调用工具读取一下当前工作区目录下 hello.txt 文件的内容，并用一句话向我总结它说了什么。"
 
 	err := eng.Run(context.Background(), prompt)
 	if err != nil {
