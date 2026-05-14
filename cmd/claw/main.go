@@ -55,18 +55,25 @@ func main() {
 	// 1. 初始化真实的 Provider大脑
 	llmProvider := provider.NewOpenAIProvider("qwen3-max")
 
-	// 2. 注入伪造的工具注册表
+	// 2. 初始化工具工厂
 	registry := tools.NewRegistry()
 
-	// 3. 将真实的 ReadFile 工具挂载到注册表中
-	readFileTool := tools.NewReadFileTool(workDir)
-	registry.Register(readFileTool)
+	// 3. 实例化读取文件的工具并注册到工具工厂中
+	registry.Register(tools.NewReadFileTool(workDir))
+	registry.Register(tools.NewWriteFileTool(workDir))
+	registry.Register(tools.NewBashTool(workDir))
 
 	// 4. 实例化核心引擎，由于任务简单，我们关闭思考阶段 (EnableThinking = false) 以加快速度
 	eng := engine.NewAgentEngine(llmProvider, registry, workDir, false)
 
 	// 设定测试任务
-	prompt := "请调用工具读取一下当前工作区目录下 hello.txt 文件的内容，并用一句话向我总结它说了什么。"
+	prompt := `
+	请帮我执行以下操作：
+	1、用 bash 查看一下我当前电脑的 Go 版本。
+	2、帮我写一个简单的 helloworld.go 文件，输出 "Hello, go-tiny-claw!"。
+	3、将代码输出到出来
+	4、用 bash 编译并运行这个 go 文件，确认它能正常工作。
+	`
 
 	err := eng.Run(context.Background(), prompt)
 	if err != nil {
